@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+# (C) Copyright 2024 ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+# https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+
+[build-system]
+requires = [
+  "setuptools>=60",
+  "setuptools-scm>=8",
+]
+
+[project]
+name = "ai-models-multio"
+
+description = "ai-models output plugin for multio"
+keywords = [
+  "ai",
+  "datasets",
+  "tools",
+]
+
+license = { file = "LICENSE" }
+authors = [
+  { name = "European Centre for Medium-Range Weather Forecasts (ECMWF)", email = "software.support@ecmwf.int" },
+]
+
+requires-python = ">=3.9"
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+dynamic = [
+  "version",
+]
+dependencies = [
+  "ai-models",
+  "multiopython @ git+ssh://git@github.com/ecmwf/multio-python.git"
+]
+
+entry-points."ai_models.output".multio = "ai_models_multio.output:MultioOutput"
+entry-points."ai_models.output".multiofdb = "ai_models_multio.output:FDBMultioOutput"
+
+
+[tool.setuptools_scm]
+version_file = "src/ai_models_multio/_version.py"
+
+[tool.isort]
+profile = "black"
+
+[tool.setuptools.package-data]
+ai_models_multio = ["*.yaml", "*.grib"]
