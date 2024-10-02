@@ -51,19 +51,19 @@ dynamic = [
 ]
 dependencies = [
   "ai-models",
-  "multiopython @ git+ssh://git@github.com/ecmwf/multio-python.git"
+  "multiopython @ git+ssh://git@github.com/ecmwf/multio-python.git",
 ]
 
 entry-points."ai_models.output".multio = "ai_models_multio.output:MultioOutput"
-entry-points."ai_models.output".multiofdb = "ai_models_multio.output:FDBMultioOutput"
-entry-points."ai_models.output".multiodebug= "ai_models_multio.output:MultioDebugOutput"
+entry-points."ai_models.output".multiodebug = "ai_models_multio.output:MultioDebugOutput"
 
+entry-points."ai_models.output".multiofdb = "ai_models_multio.output:FDBMultioOutput"
+
+[tool.setuptools.package-data]
+ai_models_multio = [ "*.grib" ]
 
 [tool.setuptools_scm]
 version_file = "src/ai_models_multio/_version.py"
 
 [tool.isort]
 profile = "black"
-
-[tool.setuptools.package-data]
-ai_models_multio = ["*.yaml", "*.grib"]

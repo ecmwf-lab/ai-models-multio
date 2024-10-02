@@ -7,13 +7,14 @@
 
 from __future__ import annotations
 
-from typing import Literal
 import os
-
 from pathlib import Path
+from typing import Literal
 
-from multiopython.plans import Plan, Config, actions, sinks
-
+from multiopython.plans import Config
+from multiopython.plans import Plan
+from multiopython.plans import actions
+from multiopython.plans import sinks
 
 PLANS = Literal["to_file", "to_fdb", "debug"]
 
@@ -21,16 +22,13 @@ template_path = Path(__file__).parent / "templates" / "template.grib"
 
 
 class CONFIGURED_PLANS:
-    """
-    Configured plans for Multio Output
-    """
+    """Configured plans for Multio Output"""
+
     @staticmethod
     def to_file(output_path: os.PathLike) -> Config:
         return Plan(
             actions=[
-                actions.Encode(
-                    template=str(template_path), format="grib", grid_type="n320"
-                ),
+                actions.Encode(template=str(template_path), format="grib", grid_type="n320"),
                 actions.Sink(
                     sinks=[
                         sinks.File(
@@ -48,9 +46,7 @@ class CONFIGURED_PLANS:
     def to_fdb(output_path: os.PathLike) -> Config:
         return Plan(
             actions=[
-                actions.Encode(
-                    template=str(template_path), format="grib", grid_type="n320"
-                ),
+                actions.Encode(template=str(template_path), format="grib", grid_type="n320"),
                 actions.Sink(sinks=[sinks.FDB()]),
             ],
             name="output-to-file",
@@ -59,16 +55,13 @@ class CONFIGURED_PLANS:
     @staticmethod
     def debug(output_path: os.PathLike) -> Config:
         return Plan(
-            actions=[
-                actions.Print(stream="cout", prefix=" ++ MULTIO-PRINT-ALL-DEBUG :: ")
-            ],
+            actions=[actions.Print(stream="cout", prefix=" ++ MULTIO-PRINT-ALL-DEBUG :: ")],
             name="output-to-file",
         ).to_config()
 
 
 def get_plan(plan: PLANS, **kwargs) -> Config:
-    """
-    Get plan for Multio Output
+    """Get plan for Multio Output
 
     Parameters
     ----------

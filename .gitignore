@@ -195,4 +195,4 @@ test.ipynb
 tempCodeRunnerFile.python
 
 
-!src/ai_models_multio/template.grib
+!src/ai_models_multio/templates/*
