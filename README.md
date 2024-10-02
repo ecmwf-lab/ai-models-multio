@@ -11,7 +11,7 @@ Allows for an alternative encoding method to grib, and direct writing to FDB.
 
 However, `multio` does not have a build, and must be built manually.
 
-## Usage
+## Usage
 
 Once installed, three output plugins are registered with `ai-models`,
 - `multio`
