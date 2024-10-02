@@ -56,6 +56,7 @@ dependencies = [
 
 entry-points."ai_models.output".multio = "ai_models_multio.output:MultioOutput"
 entry-points."ai_models.output".multiofdb = "ai_models_multio.output:FDBMultioOutput"
+entry-points."ai_models.output".multiodebug= "ai_models_multio.output:MultioDebugOutput"
 
 
 [tool.setuptools_scm]
