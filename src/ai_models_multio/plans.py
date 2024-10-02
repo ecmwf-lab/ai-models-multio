@@ -25,10 +25,10 @@ class CONFIGURED_PLANS:
     """Configured plans for Multio Output"""
 
     @staticmethod
-    def to_file(output_path: os.PathLike) -> Config:
+    def to_file(output_path: os.PathLike, grid_type: str = "n320", **_) -> Config:
         return Plan(
             actions=[
-                actions.Encode(template=str(template_path), format="grib", grid_type="n320"),
+                actions.Encode(template=str(template_path), format="grib", grid_type=grid_type),
                 actions.Sink(
                     sinks=[
                         sinks.File(
@@ -43,17 +43,17 @@ class CONFIGURED_PLANS:
         ).to_config()
 
     @staticmethod
-    def to_fdb(output_path: os.PathLike) -> Config:
+    def to_fdb(output_path: os.PathLike, grid_type: str = "n320", **_) -> Config:
         return Plan(
             actions=[
-                actions.Encode(template=str(template_path), format="grib", grid_type="n320"),
+                actions.Encode(template=str(template_path), format="grib", grid_type=grid_type),
                 actions.Sink(sinks=[sinks.FDB()]),
             ],
-            name="output-to-file",
+            name="output-to-fdb",
         ).to_config()
 
     @staticmethod
-    def debug(output_path: os.PathLike) -> Config:
+    def debug(output_path: os.PathLike, **_) -> Config:
         return Plan(
             actions=[actions.Print(stream="cout", prefix=" ++ MULTIO-PRINT-ALL-DEBUG :: ")],
             name="output-to-file",
