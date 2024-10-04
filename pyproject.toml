@@ -60,7 +60,7 @@ entry-points."ai_models.output".multiodebug = "ai_models_multio.output:MultioDeb
 entry-points."ai_models.output".multiofdb = "ai_models_multio.output:FDBMultioOutput"
 
 [tool.setuptools.package-data]
-ai_models_multio = [ "*.grib" ]
+ai_models_multio = [ "*.tmpl" ]
 
 [tool.setuptools_scm]
 version_file = "src/ai_models_multio/_version.py"
