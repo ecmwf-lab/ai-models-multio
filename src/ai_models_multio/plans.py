@@ -86,6 +86,7 @@ def get_template_path(values: np.ndarray, metadata: Metadata) -> str:
 
     coder = GribCoder()
     metadata = dict(metadata)
+    metadata["edition"] = metadata.get("gribEdition", 2)
 
     if len(values.shape) == 1:
         template_name = coder._gg_field(values, metadata)
@@ -106,7 +107,7 @@ def get_template_path(values: np.ndarray, metadata: Metadata) -> str:
             warnings.warn(f"Template {template_path} does not exist, using default template", RuntimeWarning)
             template_path = Path(__file__).parent / "templates" / "default.tmpl"
 
-    LOG.info(f"Using template {template_path}")
+    LOG.info(f"Using template {template_path!r}")
 
     return str(template_path.absolute())
 

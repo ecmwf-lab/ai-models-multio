@@ -26,6 +26,7 @@ def earthkit_to_multio(metadata: Metadata):
     """Convert earthkit metadata to Multio metadata"""
     metad = metadata.as_namespace("mars")
     metad.pop("levtype", None)
+    metad.pop("param", None)
 
     metad["paramId"] = metadata["paramId"]
     metad["typeOfLevel"] = metadata["typeOfLevel"]
@@ -46,6 +47,7 @@ class MultioOutput(Output):
         metadata.setdefault("stream", "oper")
         metadata.setdefault("expver", owner.expver)
         metadata.setdefault("class", "ml")
+        metadata.setdefault("gribEdition", "2")
 
         self.metadata = metadata
 
@@ -76,8 +78,15 @@ class MultioOutput(Output):
         metadata_template.update(self.metadata)
         metadata_template.update(kwargs)
 
-        metadata_template.update({"step": step, "trigger": "step", "type": "fc", "globalSize": math.prod(data.shape)})
-        # metadata_template['dataType'] = metadata_template.pop('type')
+        metadata_template.update(
+            {
+                "step": step,
+                "trigger": "step",
+                "type": "fc",
+                "globalSize": math.prod(data.shape),
+                "generatingProcessIdentifier": self._owner.version,
+            }
+        )
 
         with self.server(data, template_metadata) as server:
             server_metadata = multiopython.Metadata(server, metadata_template)
