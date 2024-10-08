@@ -107,7 +107,7 @@ def get_template_path(values: np.ndarray, metadata: Metadata) -> str:
             warnings.warn(f"Template {template_path} does not exist, using default template", RuntimeWarning)
             template_path = Path(__file__).parent / "templates" / "default.tmpl"
 
-    LOG.info(f"Using template {template_path!r}")
+    LOG.info(f"Using template {str(template_path)!r}")
 
     return str(template_path.absolute())
 
