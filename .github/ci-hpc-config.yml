@@ -1,0 +1,14 @@
+build:
+  python: '3.10'
+  modules:
+    - ninja
+  dependencies:
+    - ecmwf/multio@develop
+    - ecmwf/eccodes@develop
+    - ecmwf/eckit@develop
+  python_dependencies: []
+  parallel: 64
+
+  pytest_cmd: |
+    python -m pytest -vv -m 'not notebook and not no_cache_init' --cov=. --cov-report=xml
+    python -m coverage report
