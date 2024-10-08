@@ -7,28 +7,26 @@
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
-from functools import cached_property
-from typing import Any
-from ai_models.outputs import Output
-import math
-
 import multiopython
-from contextlib import redirect_stdout
-import io
+from ai_models.model import Timer
+from ai_models.outputs import Output
 
 if TYPE_CHECKING:
+    import numpy as np
     from earthkit.data.core.metadata import Metadata
 
-from .plans import get_plan, PLANS
+from .plans import PLANS
+from .plans import get_plan
+
 
 def earthkit_to_multio(metadata: Metadata):
-    """
-    Convert EarthKit metadata to Multio metadata
-    """
+    """Convert earthkit metadata to Multio metadata"""
     metad = metadata.as_namespace("mars")
     metad.pop("levtype", None)
+    metad.pop("param", None)
 
     metad["paramId"] = metadata["paramId"]
     metad["typeOfLevel"] = metadata["typeOfLevel"]
@@ -37,51 +35,60 @@ def earthkit_to_multio(metadata: Metadata):
 
 
 class MultioOutput(Output):
-    def __init__(self, owner, path, metadata, plan: PLANS = "to_file", **kwargs):
-        """
-        Multio Output plugin for ai-models
-        """
+    _server: multiopython.Multio = None
 
-        multio_plan = get_plan(plan, output_path=path)
+    def __init__(self, owner, path: str, metadata: dict, plan: PLANS = "to_file", **_):
+        """Multio Output plugin for ai-models"""
 
-        self.owner = owner
-        self.path = path
+        self._plan_name = plan
+        self._path = path
+        self._owner = owner
 
         metadata.setdefault("stream", "oper")
         metadata.setdefault("expver", owner.expver)
         metadata.setdefault("class", "ml")
+        metadata.setdefault("gribEdition", "2")
 
         self.metadata = metadata
 
-        with multiopython.MultioPlan(multio_plan):
-            self.server = multiopython.Multio()
-        # self.server.start_server() # Pointer error
+    def get_plan(self, data: np.ndarray, metadata: Metadata) -> multiopython.plans.Config:
+        """Get the plan for the output"""
+        return get_plan(self._plan_name, values=data, metadata=metadata, output_path=self._path)
 
-    def write(self, data, *args, check_nans=False, **kwargs):
-        """
-        Write data to multio
-        """
+    def server(self, data: np.ndarray, metadata: Metadata) -> multiopython.Multio:
+        """Get multio server, with plan configured from data, metadata and path"""
+        if self._server is None:
+            with Timer("Multio server initialisation"):
+                with multiopython.MultioPlan(self.get_plan(data, metadata)):
+                    server = multiopython.Multio()
+                    self._server = server
+        return self._server
 
-        # Skip if data is None
+    def write(self, data: np.ndarray, *, check_nans: bool = False, **kwargs):
+        """Write data to multio"""
+
+        # Skip if data is None
         if data is None:
             return
-        
-        template = kwargs.pop("template")
-        step = kwargs.pop("step")
 
-        metadata_template = dict(earthkit_to_multio(template.metadata()))
+        template_metadata: Metadata = kwargs.pop("template").metadata()
+        step: int = kwargs.pop("step")
+
+        metadata_template = dict(earthkit_to_multio(template_metadata))
         metadata_template.update(self.metadata)
         metadata_template.update(kwargs)
 
-        metadata_template.update({
-            'step': step,
-            'trigger': 'step',
-            'type': 'fc',
-            'globalSize': math.prod(data.shape)
-        })
+        metadata_template.update(
+            {
+                "step": step,
+                "trigger": "step",
+                "type": "fc",
+                "globalSize": math.prod(data.shape),
+                "generatingProcessIdentifier": self._owner.version,
+            }
+        )
 
-
-        with self.server as server:
+        with self.server(data, template_metadata) as server:
             server_metadata = multiopython.Metadata(server, metadata_template)
             server.write_field(server_metadata, data)
             server.notify(server_metadata)
@@ -96,5 +103,6 @@ class FDBMultioOutput(MultioOutput):
 
 class MultioDebugOutput(MultioOutput):
     """Debug"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, plan="debug", **kwargs)
