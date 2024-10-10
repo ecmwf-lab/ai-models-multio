@@ -62,7 +62,7 @@ class CONFIGURED_PLANS:
             yaml.safe_load(open(path))
         except (FileNotFoundError, ValueError):
             LOG.warning(
-                f"Failed to load FDB config from {path!r}, see {str(Path(__file__).parent.absolute()/'fdb'/'example_config.yaml')} for an example."
+                f"'path' should point to an FDB config file.\nFailed to load FDB config from {path!r}, see {str(Path(__file__).parent.absolute()/'fdb'/'example_config.yaml')} for an example."
             )
 
         return Plan(
