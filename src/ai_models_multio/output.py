@@ -22,11 +22,29 @@ from .plans import PLANS
 from .plans import get_plan
 
 
+def geography_translate(metadata: Metadata) -> dict:
+    geo_namespace = metadata.as_namespace("geography")
+    return {
+        "north": geo_namespace["latitudeOfFirstGridPointInDegrees"],
+        "west": geo_namespace["longitudeOfFirstGridPointInDegrees"],
+        "south": geo_namespace["latitudeOfLastGridPointInDegrees"],
+        "east": geo_namespace["longitudeOfLastGridPointInDegrees"],
+        "west_east_increment": geo_namespace["iDirectionIncrementInDegrees"],
+        "south_north_increment": geo_namespace["jDirectionIncrementInDegrees"],
+        "Ni": geo_namespace["Ni"],
+        "Nj": geo_namespace["Nj"],
+        "gridded": True,
+        "gridType": geo_namespace["gridType"],
+    }
+
+
 def earthkit_to_multio(metadata: Metadata):
     """Convert earthkit metadata to Multio metadata"""
     metad = metadata.as_namespace("mars")
+    metad.update(geography_translate(metadata))
     metad.pop("levtype", None)
     metad.pop("param", None)
+    metad.pop("bitmapPresent", None)
 
     metad["paramId"] = metadata["paramId"]
     metad["typeOfLevel"] = metadata["typeOfLevel"]
@@ -46,6 +64,7 @@ class MultioOutput(Output):
 
         metadata.setdefault("stream", "oper")
         metadata.setdefault("expver", owner.expver)
+        metadata.setdefault("type", "fc")
         metadata.setdefault("class", "ml")
         metadata.setdefault("gribEdition", "2")
 
@@ -82,12 +101,10 @@ class MultioOutput(Output):
             {
                 "step": step,
                 "trigger": "step",
-                "type": "fc",
                 "globalSize": math.prod(data.shape),
                 "generatingProcessIdentifier": self._owner.version,
             }
         )
-
         with self.server(data, metadata_template) as server:
             server_metadata = multio.Metadata(server, metadata_template)
             server.write_field(server_metadata, data)
