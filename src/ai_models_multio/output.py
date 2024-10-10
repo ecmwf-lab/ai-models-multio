@@ -23,6 +23,7 @@ from .plans import get_plan
 
 
 def geography_translate(metadata: Metadata) -> dict:
+    """Translate geography metadata from earthkit to multio"""
     geo_namespace = metadata.as_namespace("geography")
     return {
         "north": geo_namespace["latitudeOfFirstGridPointInDegrees"],

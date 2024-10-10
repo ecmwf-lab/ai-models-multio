@@ -32,13 +32,12 @@ class CONFIGURED_PLANS:
     """Configured plans for Multio Output"""
 
     @staticmethod
-    def to_file(path: os.PathLike, template_path: os.PathLike, atlas_named_grid: str, **_) -> Client:
+    def to_file(path: os.PathLike, template_path: os.PathLike, **_) -> Client:
         return Plan(
             actions=[
                 actions.Encode(
                     template=str(template_path),
                     format="grib",
-                    atlas_named_grid=atlas_named_grid,
                     addtional_metadata={"class": "ml"},
                 ),
                 actions.Sink(
@@ -55,7 +54,7 @@ class CONFIGURED_PLANS:
         ).to_client()
 
     @staticmethod
-    def to_fdb(path: os.PathLike, template_path: os.PathLike, atlas_named_grid: str, **_) -> Client:
+    def to_fdb(path: os.PathLike, template_path: os.PathLike, **_) -> Client:
 
         try:
             import yaml
@@ -71,7 +70,6 @@ class CONFIGURED_PLANS:
                 actions.Encode(
                     template=str(template_path),
                     format="grib",
-                    atlas_named_grid=atlas_named_grid,
                     addtional_metadata={"class": "ml"},
                 ),
                 actions.Sink(sinks=[sinks.FDB(config=str(path))]),
@@ -80,14 +78,13 @@ class CONFIGURED_PLANS:
         ).to_client()
 
     @staticmethod
-    def debug(template_path: os.PathLike, atlas_named_grid: str, **_) -> Client:
+    def debug(template_path: os.PathLike, **_) -> Client:
         return Plan(
             actions=[
                 actions.Print(stream="cout", prefix=" ++ MULTIO-DEBUG-PRIOR-ENCODE :: "),
                 actions.Encode(
                     template=str(template_path),
                     format="grib",
-                    atlas_named_grid=atlas_named_grid,
                 ),
                 actions.Print(stream="cout", prefix=" ++ MULTIO-DEBUG-POST-ENCODE :: "),
             ],
@@ -111,13 +108,7 @@ def get_encode_params(values: np.ndarray, metadata: Metadata) -> dict:
     dict
         Kwargs for encoding
     """
-    # from earthkit.data.readers.grib.output import GribCoder
-
-    # coder = GribCoder()
     metadata = dict(metadata).copy()
-
-    # metadata["edition"] = metadata.get("gribEdition", 2)
-    # metadata["levtype"] = 'pl'
 
     levtype = metadata.get("levtype", None)
     if levtype is None:
@@ -130,12 +121,8 @@ def get_encode_params(values: np.ndarray, metadata: Metadata) -> dict:
 
     if len(values.shape) == 1:
         template_name = f"regular_gg_{levtype}_grib{edition}"
-        raise NotImplementedError("Grid type GAUSSIAN not implemented")
-        # template_name = coder._gg_field(values, metadata)
     elif len(values.shape) == 2:
         template_name = f"regular_ll_{levtype}_grib{edition}"
-        Nj, Ni = values.shape
-        # template_name = coder._ll_field(values, metadata)
     else:
         warnings.warn(
             f"Invalid shape {values.shape} for GRIB, must be 1 or 2 dimension ",
@@ -160,12 +147,9 @@ def get_encode_params(values: np.ndarray, metadata: Metadata) -> dict:
             )
             template_path = Path(__file__).parent / "templates" / "default.tmpl"
 
-    grid_type = f"L{Ni}x{Nj}"
-
     LOG.info(f"Using template {str(template_path)!r}")
-    LOG.info(f"Using {grid_type=!r}")
 
-    return dict(template_path=(template_path.absolute()), atlas_named_grid=grid_type)
+    return dict(template_path=(template_path.absolute()))
 
 
 def get_plan(plan: PLANS, values: np.ndarray, metadata: Metadata, **kwargs) -> Client:
