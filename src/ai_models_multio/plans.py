@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Literal
 
-from multio.plans import Config
+from multio.plans import Client
 from multio.plans import Plan
 from multio.plans import actions
 from multio.plans import sinks
@@ -32,7 +32,7 @@ class CONFIGURED_PLANS:
     """Configured plans for Multio Output"""
 
     @staticmethod
-    def to_file(path: os.PathLike, template_path: os.PathLike, atlas_named_grid: str, **_) -> Config:
+    def to_file(path: os.PathLike, template_path: os.PathLike, atlas_named_grid: str, **_) -> Client:
         return Plan(
             actions=[
                 actions.Encode(
@@ -52,16 +52,16 @@ class CONFIGURED_PLANS:
                 ),
             ],
             name="output-to-file",
-        ).to_config()
+        ).to_client()
 
     @staticmethod
-    def to_fdb(path: os.PathLike, template_path: os.PathLike, atlas_named_grid: str, **_) -> Config:
+    def to_fdb(path: os.PathLike, template_path: os.PathLike, atlas_named_grid: str, **_) -> Client:
 
         try:
             import yaml
 
             yaml.safe_load(open(path))
-        except ValueError:
+        except (FileNotFoundError, ValueError):
             LOG.warning(
                 f"Failed to load FDB config from {path!r}, see {str(Path(__file__).parent.absolute()/'fdb'/'example_config.yaml')} for an example."
             )
@@ -77,10 +77,10 @@ class CONFIGURED_PLANS:
                 actions.Sink(sinks=[sinks.FDB(config=str(path))]),
             ],
             name="output-to-fdb",
-        ).to_config()
+        ).to_client()
 
     @staticmethod
-    def debug(template_path: os.PathLike, atlas_named_grid: str, **_) -> Config:
+    def debug(template_path: os.PathLike, atlas_named_grid: str, **_) -> Client:
         return Plan(
             actions=[
                 actions.Print(stream="cout", prefix=" ++ MULTIO-DEBUG-PRIOR-ENCODE :: "),
@@ -92,7 +92,7 @@ class CONFIGURED_PLANS:
                 actions.Print(stream="cout", prefix=" ++ MULTIO-DEBUG-POST-ENCODE :: "),
             ],
             name="debug",
-        ).to_config()
+        ).to_client()
 
 
 def get_encode_params(values: np.ndarray, metadata: Metadata) -> dict:
@@ -168,7 +168,7 @@ def get_encode_params(values: np.ndarray, metadata: Metadata) -> dict:
     return dict(template_path=(template_path.absolute()), atlas_named_grid=grid_type)
 
 
-def get_plan(plan: PLANS, values: np.ndarray, metadata: Metadata, **kwargs) -> Config:
+def get_plan(plan: PLANS, values: np.ndarray, metadata: Metadata, **kwargs) -> Client:
     """Get plan for Multio Output
 
     Parameters
@@ -184,7 +184,7 @@ def get_plan(plan: PLANS, values: np.ndarray, metadata: Metadata, **kwargs) -> C
 
     Returns
     -------
-    Config
+    Client
         Multio Plan configuration
     """
     encoding_params = get_encode_params(values, metadata)
