@@ -21,6 +21,3 @@ Once installed, three output plugins are registered with `ai-models`,
 ```
 ai-models MODELNAME --output multio ....
 ```
-
-## WARNING
-Currently there is an issue with altering the year field, so all data will be saved with `2022`
