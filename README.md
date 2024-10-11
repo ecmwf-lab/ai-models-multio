@@ -1,6 +1,13 @@
 # ai-models-multio
+[![Upload Python Package](https://github.com/ecmwf-lab/ai-models-multio/actions/workflows/python-publish.yml/badge.svg)](https://github.com/ecmwf-lab/ai-models-multio/actions/workflows/python-publish.yml)
 
-Output plugin for multio
+**DISCLAIMER**
+This project is **BETA** and will be **Experimental** for the foreseeable future.
+Interfaces and functionality are likely to change, and the project itself may be scrapped.
+**DO NOT** use this software in any project/software that is operational.
+
+
+## Output plugin for multio
 
 Allows for an alternative encoding method to grib, and direct writing to FDB.
 
