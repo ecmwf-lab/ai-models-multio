@@ -1,0 +1,9 @@
+type: local
+engine: toc
+schema: SCHEMA_PATH_GOES_HERE
+spaces:
+- handler: Default
+  roots:
+  - path: ROOTPATH_TO_FDB
+    writable: true
+    visit: true

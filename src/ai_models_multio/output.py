@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING
 
-import multiopython
+import multio
 from ai_models.model import Timer
 from ai_models.outputs import Output
 
@@ -22,11 +22,30 @@ from .plans import PLANS
 from .plans import get_plan
 
 
+def geography_translate(metadata: Metadata) -> dict:
+    """Translate geography metadata from earthkit to multio"""
+    geo_namespace = metadata.as_namespace("geography")
+    return {
+        "north": geo_namespace["latitudeOfFirstGridPointInDegrees"],
+        "west": geo_namespace["longitudeOfFirstGridPointInDegrees"],
+        "south": geo_namespace["latitudeOfLastGridPointInDegrees"],
+        "east": geo_namespace["longitudeOfLastGridPointInDegrees"],
+        "west_east_increment": geo_namespace["iDirectionIncrementInDegrees"],
+        "south_north_increment": geo_namespace["jDirectionIncrementInDegrees"],
+        "Ni": geo_namespace["Ni"],
+        "Nj": geo_namespace["Nj"],
+        "gridded": True,
+        "gridType": geo_namespace["gridType"],
+    }
+
+
 def earthkit_to_multio(metadata: Metadata):
     """Convert earthkit metadata to Multio metadata"""
     metad = metadata.as_namespace("mars")
+    metad.update(geography_translate(metadata))
     metad.pop("levtype", None)
     metad.pop("param", None)
+    metad.pop("bitmapPresent", None)
 
     metad["paramId"] = metadata["paramId"]
     metad["typeOfLevel"] = metadata["typeOfLevel"]
@@ -35,7 +54,7 @@ def earthkit_to_multio(metadata: Metadata):
 
 
 class MultioOutput(Output):
-    _server: multiopython.Multio = None
+    _server: multio.Multio = None
 
     def __init__(self, owner, path: str, metadata: dict, plan: PLANS = "to_file", **_):
         """Multio Output plugin for ai-models"""
@@ -46,21 +65,22 @@ class MultioOutput(Output):
 
         metadata.setdefault("stream", "oper")
         metadata.setdefault("expver", owner.expver)
+        metadata.setdefault("type", "fc")
         metadata.setdefault("class", "ml")
         metadata.setdefault("gribEdition", "2")
 
         self.metadata = metadata
 
-    def get_plan(self, data: np.ndarray, metadata: Metadata) -> multiopython.plans.Config:
+    def get_plan(self, data: np.ndarray, metadata: Metadata) -> multio.plans.Config:
         """Get the plan for the output"""
-        return get_plan(self._plan_name, values=data, metadata=metadata, output_path=self._path)
+        return get_plan(self._plan_name, values=data, metadata=metadata, path=self._path)
 
-    def server(self, data: np.ndarray, metadata: Metadata) -> multiopython.Multio:
+    def server(self, data: np.ndarray, metadata: dict) -> multio.Multio:
         """Get multio server, with plan configured from data, metadata and path"""
         if self._server is None:
             with Timer("Multio server initialisation"):
-                with multiopython.MultioPlan(self.get_plan(data, metadata)):
-                    server = multiopython.Multio()
+                with multio.MultioPlan(self.get_plan(data, metadata)):
+                    server = multio.Multio()
                     self._server = server
         return self._server
 
@@ -82,16 +102,14 @@ class MultioOutput(Output):
             {
                 "step": step,
                 "trigger": "step",
-                "type": "fc",
                 "globalSize": math.prod(data.shape),
                 "generatingProcessIdentifier": self._owner.version,
             }
         )
-
-        with self.server(data, template_metadata) as server:
-            server_metadata = multiopython.Metadata(server, metadata_template)
+        with self.server(data, metadata_template) as server:
+            server_metadata = multio.Metadata(server, metadata_template)
             server.write_field(server_metadata, data)
-            server.notify(server_metadata)
+            # server.notify(server_metadata)
 
 
 class FDBMultioOutput(MultioOutput):

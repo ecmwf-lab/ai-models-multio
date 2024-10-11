@@ -14,10 +14,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Literal
 
-from multiopython.plans import Config
-from multiopython.plans import Plan
-from multiopython.plans import actions
-from multiopython.plans import sinks
+from multio.plans import Client
+from multio.plans import Plan
+from multio.plans import actions
+from multio.plans import sinks
 
 PLANS = Literal["to_file", "to_fdb", "debug"]
 
@@ -32,14 +32,18 @@ class CONFIGURED_PLANS:
     """Configured plans for Multio Output"""
 
     @staticmethod
-    def to_file(output_path: os.PathLike, template_path: os.PathLike, grid_type: str = "n320", **_) -> Config:
+    def to_file(path: os.PathLike, template_path: os.PathLike, **_) -> Client:
         return Plan(
             actions=[
-                actions.Encode(template=str(template_path), format="grib", grid_type=grid_type),
+                actions.Encode(
+                    template=str(template_path),
+                    format="grib",
+                    addtional_metadata={"class": "ml"},
+                ),
                 actions.Sink(
                     sinks=[
                         sinks.File(
-                            path=output_path,
+                            path=path,
                             append=True,
                             per_server=False,
                         )
@@ -47,72 +51,108 @@ class CONFIGURED_PLANS:
                 ),
             ],
             name="output-to-file",
-        ).to_config()
+        ).to_client()
 
     @staticmethod
-    def to_fdb(output_path: os.PathLike, template_path: os.PathLike, grid_type: str = "n320", **_) -> Config:
+    def to_fdb(path: os.PathLike, template_path: os.PathLike, **_) -> Client:
+
+        try:
+            import yaml
+
+            yaml.safe_load(open(path))
+        except (FileNotFoundError, ValueError):
+            LOG.warning(
+                f"'path' should point to an FDB config file.\nFailed to load FDB config from {path!r}, see {str(Path(__file__).parent.absolute()/'fdb'/'example_config.yaml')} for an example."
+            )
+
         return Plan(
             actions=[
-                actions.Encode(template=str(template_path), format="grib", grid_type=grid_type),
-                actions.Sink(sinks=[sinks.FDB()]),
+                actions.Encode(
+                    template=str(template_path),
+                    format="grib",
+                    addtional_metadata={"class": "ml"},
+                ),
+                actions.Sink(sinks=[sinks.FDB(config=str(path))]),
             ],
             name="output-to-fdb",
-        ).to_config()
+        ).to_client()
 
     @staticmethod
-    def debug(output_path: os.PathLike, **_) -> Config:
+    def debug(template_path: os.PathLike, **_) -> Client:
         return Plan(
-            actions=[actions.Print(stream="cout", prefix=" ++ MULTIO-PRINT-ALL-DEBUG :: ")],
-            name="output-to-file",
-        ).to_config()
+            actions=[
+                actions.Print(stream="cout", prefix=" ++ MULTIO-DEBUG-PRIOR-ENCODE :: "),
+                actions.Encode(
+                    template=str(template_path),
+                    format="grib",
+                ),
+                actions.Print(stream="cout", prefix=" ++ MULTIO-DEBUG-POST-ENCODE :: "),
+            ],
+            name="debug",
+        ).to_client()
 
 
-def get_template_path(values: np.ndarray, metadata: Metadata) -> str:
+def get_encode_params(values: np.ndarray, metadata: Metadata) -> dict:
     """Get path to the template file
 
     Uses earthkit.data.readers.grib.output.GribCoder to determine the template file
 
     Pulls from in order:
         - ai_models_multio/templates
+        - $MULTIO_RAPS_TEMPLATES_PATH
         - $ECCODES_DIR/share/eccodes/samples
         and fails over to the default template
 
     Returns
     -------
-    str
-        Path to the template file
+    dict
+        Kwargs for encoding
     """
-    from earthkit.data.readers.grib.output import GribCoder
+    metadata = dict(metadata).copy()
 
-    coder = GribCoder()
-    metadata = dict(metadata)
-    metadata["edition"] = metadata.get("gribEdition", 2)
+    levtype = metadata.get("levtype", None)
+    if levtype is None:
+        if "levelist" in metadata:
+            levtype = "pl"
+        else:
+            levtype = "sfc"
+
+    edition = metadata.get("edition", 2)
 
     if len(values.shape) == 1:
-        template_name = coder._gg_field(values, metadata)
+        template_name = f"regular_gg_{levtype}_grib{edition}"
     elif len(values.shape) == 2:
-        template_name = coder._ll_field(values, metadata)
+        template_name = f"regular_ll_{levtype}_grib{edition}"
     else:
-        warnings.warn(f"Invalid shape {values.shape} for GRIB, must be 1 or 2 dimension ", RuntimeWarning)
+        warnings.warn(
+            f"Invalid shape {values.shape} for GRIB, must be 1 or 2 dimension ",
+            RuntimeWarning,
+        )
         template_name = "default"
 
     template_path = (Path(__file__).parent / "templates" / (template_name + ".tmpl")).absolute()
 
     if not template_path.exists():
-        if "ECCODES_DIR" in os.environ:
+        if "MULTIO_RAPS_TEMPLATES_PATH" in os.environ:
+            template_path = Path(os.environ["MULTIO_RAPS_TEMPLATES_PATH"]) / (template_name + ".tmpl")
+
+        elif "ECCODES_DIR" in os.environ:
             template_path = (
                 Path(os.environ["ECCODES_DIR"]) / "share" / "eccodes" / "samples" / (template_name + ".tmpl")
             )
         else:
-            warnings.warn(f"Template {template_path} does not exist, using default template", RuntimeWarning)
+            warnings.warn(
+                f"Template {template_path} does not exist, using default template",
+                RuntimeWarning,
+            )
             template_path = Path(__file__).parent / "templates" / "default.tmpl"
 
     LOG.info(f"Using template {str(template_path)!r}")
 
-    return str(template_path.absolute())
+    return dict(template_path=(template_path.absolute()))
 
 
-def get_plan(plan: PLANS, values: np.ndarray, metadata: Metadata, **kwargs) -> Config:
+def get_plan(plan: PLANS, values: np.ndarray, metadata: Metadata, **kwargs) -> Client:
     """Get plan for Multio Output
 
     Parameters
@@ -128,8 +168,8 @@ def get_plan(plan: PLANS, values: np.ndarray, metadata: Metadata, **kwargs) -> C
 
     Returns
     -------
-    Config
+    Client
         Multio Plan configuration
     """
-    template_path = get_template_path(values, metadata)
-    return getattr(CONFIGURED_PLANS, plan)(template_path=template_path, **kwargs)
+    encoding_params = get_encode_params(values, metadata)
+    return getattr(CONFIGURED_PLANS, plan)(**encoding_params, **kwargs)
