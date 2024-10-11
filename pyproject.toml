@@ -51,7 +51,7 @@ dynamic = [
 ]
 dependencies = [
   "ai-models",
-  "multiopython @ git+https://github.com/ecmwf/multio-python.git",
+  "multiopython",
 ]
 
 entry-points."ai_models.output".multio = "ai_models_multio.output:MultioOutput"
