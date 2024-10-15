@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import multio
 from ai_models.model import Timer
-from ai_models.outputs import Output
+from ai_models.outputs import GribOutputBase
 
 if TYPE_CHECKING:
     import numpy as np
@@ -53,27 +53,28 @@ def earthkit_to_multio(metadata: Metadata):
     return metad
 
 
-class MultioOutput(Output):
+class MultioOutput(GribOutputBase):
+    """Multio Output plugin for ai-models"""
+
     _server: multio.Multio = None
 
     def __init__(self, owner, path: str, metadata: dict, plan: PLANS = "to_file", **_):
-        """Multio Output plugin for ai-models"""
+        """Multio Output plugin for ai-models
+
+        Parameters
+        ----------
+        plan : PLANS, optional
+            Multio Plan to use, by default "to_file"
+        """
 
         self._plan_name = plan
-        self._path = path
-        self._owner = owner
 
-        metadata.setdefault("stream", "oper")
-        metadata.setdefault("expver", owner.expver)
         metadata.setdefault("type", "fc")
-        metadata.setdefault("class", "ml")
-        metadata.setdefault("gribEdition", "2")
-
-        self.metadata = metadata
+        super().__init__(owner, path, metadata)
 
     def get_plan(self, data: np.ndarray, metadata: Metadata) -> multio.plans.Config:
         """Get the plan for the output"""
-        return get_plan(self._plan_name, values=data, metadata=metadata, path=self._path)
+        return get_plan(self._plan_name, values=data, metadata=metadata, path=self.path)
 
     def server(self, data: np.ndarray, metadata: dict) -> multio.Multio:
         """Get multio server, with plan configured from data, metadata and path"""
@@ -86,6 +87,7 @@ class MultioOutput(Output):
 
     def write(self, data: np.ndarray, *, check_nans: bool = False, **kwargs):
         """Write data to multio"""
+        del check_nans  # Unused
 
         # Skip if data is None
         if data is None:
@@ -95,7 +97,7 @@ class MultioOutput(Output):
         step: int = kwargs.pop("step")
 
         metadata_template = dict(earthkit_to_multio(template_metadata))
-        metadata_template.update(self.metadata)
+        metadata_template.update(self.grib_keys)
         metadata_template.update(kwargs)
 
         metadata_template.update(
@@ -103,7 +105,7 @@ class MultioOutput(Output):
                 "step": step,
                 "trigger": "step",
                 "globalSize": math.prod(data.shape),
-                "generatingProcessIdentifier": self._owner.version,
+                "generatingProcessIdentifier": self.owner.version,
             }
         )
         with self.server(data, metadata_template) as server:
