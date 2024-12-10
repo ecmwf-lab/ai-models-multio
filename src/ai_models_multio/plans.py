@@ -38,7 +38,7 @@ class CONFIGURED_PLANS:
                 actions.Encode(
                     template=str(template_path),
                     format="grib",
-                    addtional_metadata={"class": "ml"},
+                    additional_metadata={"class": "ml"},
                 ),
                 actions.Sink(
                     sinks=[
@@ -70,7 +70,7 @@ class CONFIGURED_PLANS:
                 actions.Encode(
                     template=str(template_path),
                     format="grib",
-                    addtional_metadata={"class": "ml"},
+                    additional_metadata={"class": "ml"},
                 ),
                 actions.Sink(sinks=[sinks.FDB(config=str(path))]),
             ],
@@ -94,8 +94,6 @@ class CONFIGURED_PLANS:
 
 def get_encode_params(values: np.ndarray, metadata: Metadata) -> dict:
     """Get path to the template file
-
-    Uses earthkit.data.readers.grib.output.GribCoder to determine the template file
 
     Pulls from in order:
         - ai_models_multio/templates
